@@ -37,82 +37,89 @@ public class Server {
     }
 
     public void startServer() {
-        while (true) {
-            // Poll entry/exit states
-            currentEntryState = c.getEntryState();
-            currentExitState = c.getExitState();
+    new Thread(new Runnable() {
+        @Override
+        public void run() {
+            while (true) {
+                // Poll entry/exit states
+                currentEntryState = c.getEntryState();
+                currentExitState = c.getExitState();
 
-            // Handle entry events
-            if (currentEntryState && (currentEntryState != previousEntryState)) {
-                new Thread(() -> {
-                    c.sendCommand(c.OPEN_ENTRY_GATE_CMD);
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    c.sendCommand(c.CLOSE_ENTRY_GATE_CMD);
-                    Timestamp timeStamp = new Timestamp(System.currentTimeMillis());
-                    CARDTO newCar = new CARDTO(timeStamp); // Ensure appropriate constructor exists
-                    
-                    try {
-                        DAO.InsertCar(newCar);
-                    } catch (SQLException ex) {
-                        Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    synchronized (lock) {
-                        // Find the first available spot that is both logically and physically free
-                        for (int i = 0; i < idCarMapping.length; i++) {
-                            if (idCarMapping[i] == 0 && !c.getSpotState(i)) {
-                                idCarMapping[i] = newCar.getCarID();
-                                System.out.println("entry: " + idCarMapping[i]);
-                                break;
-                            }
+                // Handle entry events
+                if ((currentEntryState == true) && (currentEntryState != previousEntryState)) {
+                    new Thread(() -> {
+                        c.sendCommand(c.OPEN_ENTRY_GATE_CMD);
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException ex) {
+                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                         }
-                    }
-                }).start();
-            }
-                
-            // Handle exit events
-            if (currentExitState && (currentExitState != previousExitState)) {
-                new Thread(() -> {
-                    c.sendCommand(c.OPEN_EXIT_GATE_CMD);
-                    try {
-                        Thread.sleep(5000);
-                    } catch (InterruptedException ex) {
-                        Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                    c.sendCommand(c.CLOSE_EXIT_GATE_CMD);
+                        c.sendCommand(c.CLOSE_ENTRY_GATE_CMD);
+                        Timestamp timeStamp = new Timestamp(System.currentTimeMillis());
+                        CARDTO newCar = new CARDTO(timeStamp); // Ensure appropriate constructor exists
 
-                    synchronized (lock) {
-                        for (int i = 0; i < idCarMapping.length; i++) {
-                            // Check if a car exists and the spot is now free
-                            if (idCarMapping[i] != 0 && !c.getSpotState(i)) {
-                                CARDTO newCar = new CARDTO(idCarMapping[i]);
-                                try {
-                                    DAO.SetOutTimeStamp(newCar);
-                                } catch (SQLException ex) {
-                                    Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                        try {
+                            DAO.InsertCar(newCar);
+                        } catch (SQLException ex) {
+                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+
+                        synchronized (lock) {
+                            // Find the first available spot that is both logically and physically free
+                            for (int i = 0; i < idCarMapping.length; i++) {
+                                if (idCarMapping[i] == 0 && !c.getSpotState(i)) {
+                                    idCarMapping[i] = newCar.getCarID();
+                                    System.out.println("entry: " + idCarMapping[i]);
+                                    break;
                                 }
-                                idCarMapping[i] = 0;
                             }
                         }
-                    }
-                }).start();
-            }
-// uncomment this 
-//            previousEntryState = currentEntryState;
-//            previousExitState = currentExitState;
+                    }).start();
+                }
 
-            // Small delay to prevent busy looping
-            try {
-                Thread.sleep(100);
-            } catch (InterruptedException ex) {
-                Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                // Handle exit events
+                if ((currentExitState == true) && (currentExitState != previousExitState)) {
+                    new Thread(() -> {
+                        c.sendCommand(c.OPEN_EXIT_GATE_CMD);
+                        try {
+                            Thread.sleep(5000);
+                        } catch (InterruptedException ex) {
+                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                        }
+                        c.sendCommand(c.CLOSE_EXIT_GATE_CMD);
+
+                        synchronized (lock) {
+                            for (int i = 0; i < idCarMapping.length; i++) {
+                                if (idCarMapping[i] != 0 && !c.getSpotState(i)) {
+                                    CARDTO newCar = new CARDTO(idCarMapping[i]);
+                                    try {
+                                        DAO.SetOutTimeStamp(newCar);
+                                    } catch (SQLException ex) {
+                                        Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                                    }
+                                    idCarMapping[i] = 0;
+                                }
+                            }
+                        }
+                    }).start();
+                }
+
+                // Update previous state
+                previousEntryState = currentEntryState;
+                previousExitState = currentExitState;
+
+                // Small delay to avoid busy waiting
+                try {
+                    Thread.sleep(100); // Optional: adjust polling rate
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
             }
         }
-    }
+    }).start(); // Start the outer polling thread
+}
 
+  
     // Remaining methods (handleClients, handleClient, main) remain unchanged as per original code
     // ...
 

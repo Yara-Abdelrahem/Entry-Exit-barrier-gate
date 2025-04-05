@@ -1,6 +1,7 @@
 com/mycompany/exit_entry/carLog.class
 com/mycompany/exit_entry/garComm$1.class
 com/mycompany/exit_entry/Exit_entry.class
+com/mycompany/exit_entry/Server$1.class
 com/mycompany/exit_entry/Server.class
 exit_entry/dal/DAO.class
 exit_entry/dal/CARDTO.class

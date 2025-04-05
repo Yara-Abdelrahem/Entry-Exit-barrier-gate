@@ -1,5 +1,5 @@
 module-info.class
 com/mycompany/entry/exit_gate/SecondaryController.class
-com/mycompany/entry/exit_gate/Client.class
 com/mycompany/entry/exit_gate/App.class
+com/mycompany/entry/exit_gate/Client.class
 com/mycompany/entry/exit_gate/PrimaryController.class
