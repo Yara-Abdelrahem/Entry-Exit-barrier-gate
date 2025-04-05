@@ -8,17 +8,19 @@ import javafx.scene.control.Label;
 import javafx.scene.control.RadioButton;
 import javafx.scene.control.ToggleGroup;
 import java.util.ArrayList;
+import javafx.scene.image.ImageView;
 
 public class PrimaryController implements Runnable {
 
     @FXML
     RadioButton EntryON, EntryOFF, ExitON, ExitOFF;
-    @FXML
-    Label label1;
+
     Thread thread;
     private Client client;
     @FXML
     private Label SpotCount;
+    @FXML
+    ImageView logoImage, entry_icon, exit_icon, spot1_image, spot2_image, spot3_image;
     @FXML
     private Label Spot1Status;
     @FXML
@@ -29,18 +31,47 @@ public class PrimaryController implements Runnable {
     private ToggleGroup ExitDoorControl;
     @FXML
     private ToggleGroup EntryDoorControl;
+    private int cnt = 0;
 
     public void initialize() {
         client = new Client();
         thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
+        logoImage.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/logo.png")));
+        spot1_image.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/park.png")));
+        spot2_image.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/park.png")));
+        spot3_image.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/park.png")));
     }
 
     @Override
     public void run() {
         while (true) {
-            // client.printMessage("GetSpotStatus");
+            // Request the current spot status from the server
+            client.printMessage("GetSpotStatus");
+            // Read the response from the server
+            final String statusString = client.readMessage();
+            cnt = 0;
+            // Create local copies of the UI controls for use in the lambda
+            final Label[] labels = {Spot1Status, Spot2Status, Spot3Status};
+            final ImageView[] imageViews = {spot1_image, spot2_image, spot3_image};
+
+            // Update the GUI on the JavaFX Application Thread
+            Platform.runLater(() -> {
+                if (statusString != null && statusString.length() >= 3) {
+                    for (int i = 0; i < 3; i++) {
+                        if (statusString.charAt(i) == '1') {
+                            labels[i].setText("Available");
+                            cnt++;
+                        } else {
+                            labels[i].setText("Not Available");
+                        }
+                        updateSpotImage(labels[i], imageViews[i]);
+                        SpotCount.setText(Integer.toString(cnt));
+                    }
+                }
+            });
+
             try {
                 Thread.sleep(500);
             } catch (InterruptedException ex) {
@@ -52,11 +83,13 @@ public class PrimaryController implements Runnable {
     @FXML
     public void entryDoorControl(ActionEvent event) {
         if (EntryON.isSelected()) {
-            label1.setText("Entry Door is Open");
+            changeIconImage("ON", entry_icon); // Change image to ON
             client.printMessage("OpenEntry");
+
         } else if (EntryOFF.isSelected()) {
-            label1.setText("Entry Door is Closed");
+            changeIconImage("OFF", entry_icon); // Change image to OFF
             client.printMessage("CloseEntry");
+
         }
     }
 
@@ -64,10 +97,11 @@ public class PrimaryController implements Runnable {
     @FXML
     public void exitDoorControl(ActionEvent event) {
         if (ExitON.isSelected()) {
-            label1.setText("Exit Door is Open");
+            changeIconImage("ON", exit_icon); // Change image to ON
             client.printMessage("OpenExit");
+
         } else if (ExitOFF.isSelected()) {
-            label1.setText("Exit Door is Closed");
+            changeIconImage("OFF", exit_icon); // Change image to OFF
             client.printMessage("CloseExit");
         }
     }
@@ -106,6 +140,27 @@ public class PrimaryController implements Runnable {
         App.switchToSecondary(twoDList);
     }
 
+    // This method will check the status of each spot and update the image accordingly
+    @FXML
+    public void updateSpotImages() {
+        updateSpotImage(Spot1Status, spot1_image);
+        updateSpotImage(Spot2Status, spot2_image);
+        updateSpotImage(Spot3Status, spot3_image);
+    }
+
+    // Helper method to check the spot's status and update the image
+    private void updateSpotImage(Label spotStatus, ImageView spotImage) {
+        String imageName = "nopark.png"; // Default image for "not available"
+        if (spotStatus.getText().equals("Available")) {
+            imageName = "park.png"; // Image for "available"
+        }
+        spotImage.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/" + imageName)));
+    }
+
+    private void changeIconImage(String status, ImageView icon) {
+        String imagePath = status.equals("ON") ? "led_on.png" : "led_off.png";
+        icon.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/" + imagePath)));
+    }
 }
 
 class Client {

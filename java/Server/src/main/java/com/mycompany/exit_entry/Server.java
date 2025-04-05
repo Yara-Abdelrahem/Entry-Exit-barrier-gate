@@ -37,92 +37,90 @@ public class Server {
     }
 
     public void startServer() {
-    new Thread(new Runnable() {
-        @Override
-        public void run() {
-            while (true) {
-                // Poll entry/exit states
-                currentEntryState = c.getEntryState();
-                currentExitState = c.getExitState();
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    // Poll entry/exit states
+                    currentEntryState = c.getEntryState();
+                    currentExitState = c.getExitState();
 
-                // Handle entry events
-                if ((currentEntryState == true) && (currentEntryState != previousEntryState)) {
-                    new Thread(() -> {
-                        c.sendCommand(c.OPEN_ENTRY_GATE_CMD);
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                        c.sendCommand(c.CLOSE_ENTRY_GATE_CMD);
-                        Timestamp timeStamp = new Timestamp(System.currentTimeMillis());
-                        CARDTO newCar = new CARDTO(timeStamp); // Ensure appropriate constructor exists
-
-                        try {
-                            DAO.InsertCar(newCar);
-                        } catch (SQLException ex) {
-                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-
-                        synchronized (lock) {
-                            // Find the first available spot that is both logically and physically free
-                            for (int i = 0; i < idCarMapping.length; i++) {
-                                if (idCarMapping[i] == 0 && !c.getSpotState(i)) {
-                                    idCarMapping[i] = newCar.getCarID();
-                                    System.out.println("entry: " + idCarMapping[i]);
-                                    break;
-                                }
+                    // Handle entry events
+                    if ((currentEntryState == true) && (currentEntryState != previousEntryState)) {
+                        new Thread(() -> {
+                            c.sendCommand(c.OPEN_ENTRY_GATE_CMD);
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException ex) {
+                                Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
                             }
-                        }
-                    }).start();
-                }
+                            c.sendCommand(c.CLOSE_ENTRY_GATE_CMD);
+                            Timestamp timeStamp = new Timestamp(System.currentTimeMillis());
+                            CARDTO newCar = new CARDTO(timeStamp); // Ensure appropriate constructor exists
 
-                // Handle exit events
-                if ((currentExitState == true) && (currentExitState != previousExitState)) {
-                    new Thread(() -> {
-                        c.sendCommand(c.OPEN_EXIT_GATE_CMD);
-                        try {
-                            Thread.sleep(5000);
-                        } catch (InterruptedException ex) {
-                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
-                        }
-                        c.sendCommand(c.CLOSE_EXIT_GATE_CMD);
+                            try {
+                                DAO.InsertCar(newCar);
+                            } catch (SQLException ex) {
+                                Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                            }
 
-                        synchronized (lock) {
-                            for (int i = 0; i < idCarMapping.length; i++) {
-                                if (idCarMapping[i] != 0 && !c.getSpotState(i)) {
-                                    CARDTO newCar = new CARDTO(idCarMapping[i]);
-                                    try {
-                                        DAO.SetOutTimeStamp(newCar);
-                                    } catch (SQLException ex) {
-                                        Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                            synchronized (lock) {
+                                // Find the first available spot that is both logically and physically free
+                                for (int i = 0; i < idCarMapping.length; i++) {
+                                    if (idCarMapping[i] == 0 && !c.getSpotState(i)) {
+                                        idCarMapping[i] = newCar.getCarID();
+                                        System.out.println("entry: " + idCarMapping[i]);
+                                        break;
                                     }
-                                    idCarMapping[i] = 0;
                                 }
                             }
-                        }
-                    }).start();
-                }
+                        }).start();
+                    }
 
-                // Update previous state
-                previousEntryState = currentEntryState;
-                previousExitState = currentExitState;
+                    // Handle exit events
+                    if ((currentExitState == true) && (currentExitState != previousExitState)) {
+                        new Thread(() -> {
+                            c.sendCommand(c.OPEN_EXIT_GATE_CMD);
+                            try {
+                                Thread.sleep(5000);
+                            } catch (InterruptedException ex) {
+                                Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                            }
+                            c.sendCommand(c.CLOSE_EXIT_GATE_CMD);
 
-                // Small delay to avoid busy waiting
-                try {
-                    Thread.sleep(100); // Optional: adjust polling rate
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
+                            synchronized (lock) {
+                                for (int i = 0; i < idCarMapping.length; i++) {
+                                    if (idCarMapping[i] != 0 && !c.getSpotState(i)) {
+                                        CARDTO newCar = new CARDTO(idCarMapping[i]);
+                                        try {
+                                            DAO.SetOutTimeStamp(newCar);
+                                        } catch (SQLException ex) {
+                                            Logger.getLogger(Server.class.getName()).log(Level.SEVERE, null, ex);
+                                        }
+                                        idCarMapping[i] = 0;
+                                    }
+                                }
+                            }
+                        }).start();
+                    }
+
+                    // Update previous state
+                    previousEntryState = currentEntryState;
+                    previousExitState = currentExitState;
+
+                    // Small delay to avoid busy waiting
+                    try {
+                        Thread.sleep(100); // Optional: adjust polling rate
+                    } catch (InterruptedException e) {
+                        e.printStackTrace();
+                    }
                 }
             }
-        }
-    }).start(); // Start the outer polling thread
-}
+        }).start(); // Start the outer polling thread
+    }
 
-  
     // Remaining methods (handleClients, handleClient, main) remain unchanged as per original code
     // ...
-
     private void handleClients() {
         while (true) {
             try {
@@ -135,8 +133,7 @@ public class Server {
     }
 
     private void handleClient(Socket socket) {
-        try (BufferedReader dis = new BufferedReader(new InputStreamReader(socket.getInputStream()));
-             PrintStream ps = new PrintStream(socket.getOutputStream())) {
+        try (BufferedReader dis = new BufferedReader(new InputStreamReader(socket.getInputStream())); PrintStream ps = new PrintStream(socket.getOutputStream())) {
             String command;
             while ((command = dis.readLine()) != null) {
                 if ("History".equalsIgnoreCase(command)) {
@@ -168,6 +165,17 @@ public class Server {
                 } else if ("CloseExit".equalsIgnoreCase(command)) {
                     c.sendCommand(c.CLOSE_EXIT_GATE_CMD);
                     ps.println("CloseExit command executed.");
+                } else {
+                    String s = "";
+                    for (int i = 0; i < 3; i++) {
+                        if (c.getSpotState(i)) {
+                            s += "1";
+                        } else {
+                            s += "0";
+                        }
+
+                    }
+                    ps.println(s);
                 }
             }
         } catch (IOException e) {

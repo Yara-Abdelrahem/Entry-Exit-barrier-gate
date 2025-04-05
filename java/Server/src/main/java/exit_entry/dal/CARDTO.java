@@ -3,6 +3,7 @@
  * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
  */
 package exit_entry.dal;
+
 import java.sql.Timestamp;
 
 /**
@@ -10,6 +11,7 @@ import java.sql.Timestamp;
  * @author youssef
  */
 public class CARDTO {
+
     private int CarID;
     private Timestamp CarInTimeStamp;
     private Timestamp CarOutTimeStamp;
@@ -18,15 +20,14 @@ public class CARDTO {
         this.CarID = CarID;
         this.CarInTimeStamp = CarInTimeStamp;
     }
-    
-    public CARDTO( Timestamp CarInTimeStamp) {
+
+    public CARDTO(Timestamp CarInTimeStamp) {
         this.CarInTimeStamp = CarInTimeStamp;
     }
-    
+
     public CARDTO(int CarID) {
         this.CarID = CarID;
     }
-    
 
     public int getCarID() {
         return CarID;

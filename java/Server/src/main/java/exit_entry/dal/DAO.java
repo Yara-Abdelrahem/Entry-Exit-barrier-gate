@@ -18,26 +18,24 @@ import java.util.Date;
  *
  * @author youssef
  */
+public class DAO {
 
-public class DAO
-{
     private static int idCounter;
-    
-    static{
-        idCounter=4;
+
+    static {
+        idCounter = 4;
     }
-    
-    public static int InsertCar(CARDTO Car) throws SQLException
-    {
-        int result=-1;
+
+    public static int InsertCar(CARDTO Car) throws SQLException {
+        int result = -1;
         DriverManager.registerDriver(new ClientDriver());
-        Connection  connection= DriverManager.getConnection("jdbc:derby://localhost:1527/root","root","root");
-        PreparedStatement statement=connection.prepareStatement("INSERT INTO ROOT.CARSTIMELINE (CARID, INTIMESTAMP) VALUES (?, ?)");
+        Connection connection = DriverManager.getConnection("jdbc:derby://localhost:1527/root", "root", "root");
+        PreparedStatement statement = connection.prepareStatement("INSERT INTO ROOT.CARSTIMELINE (CARID, INTIMESTAMP) VALUES (?, ?)");
         Car.setCarID(idCounter);
-        result =idCounter++;
+        result = idCounter++;
         statement.setInt(1, Car.getCarID());
         statement.setTimestamp(2, Car.getCarInTimeStamp());
-        result=statement.executeUpdate();
+        result = statement.executeUpdate();
         statement.close();
         connection.close();
         return result;
@@ -50,9 +48,7 @@ public class DAO
         String password = "root";
         String selectQuery = "SELECT * FROM ROOT.CARSTIMELINE WHERE CARID = ? ";
         String updateQuery = "UPDATE ROOT.CARSTIMELINE SET OUTTIMESTAMP = ? WHERE CARID = ? ";
-        try (Connection connection = DriverManager.getConnection(url, user, password);
-             PreparedStatement selectStmt = connection.prepareStatement(selectQuery);
-             PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
+        try (Connection connection = DriverManager.getConnection(url, user, password); PreparedStatement selectStmt = connection.prepareStatement(selectQuery); PreparedStatement updateStmt = connection.prepareStatement(updateQuery)) {
             selectStmt.setInt(1, Car.getCarID());
             try (ResultSet Rs = selectStmt.executeQuery()) {
                 if (Rs.next()) {
@@ -67,7 +63,7 @@ public class DAO
                 }
             }
         } catch (SQLException e) {
-            e.printStackTrace(); 
+            e.printStackTrace();
         }
         return status;
     }
@@ -78,9 +74,7 @@ public class DAO
         String password = "root";
         String query = "SELECT * FROM ROOT.CARSTIMELINE";
 
-        try (Connection connection = DriverManager.getConnection(url, user, password);
-             PreparedStatement statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY);
-             ResultSet resultSet = statement.executeQuery()) {
+        try (Connection connection = DriverManager.getConnection(url, user, password); PreparedStatement statement = connection.prepareStatement(query, ResultSet.TYPE_SCROLL_INSENSITIVE, ResultSet.CONCUR_READ_ONLY); ResultSet resultSet = statement.executeQuery()) {
 
             // Move cursor to last row to get row count
             resultSet.last();

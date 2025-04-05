@@ -16,10 +16,11 @@ public class App extends Application {
 
     private static Scene scene;
     private static Stage stage;
+
     @Override
     public void start(Stage primaryStage) throws IOException {
-        scene = new Scene(loadFXML("primary"), 976, 608);
-        App.stage=primaryStage;
+        scene = new Scene(loadFXML("primary"), 1100, 1080);
+        App.stage = primaryStage;
         stage.setScene(scene);
         stage.setTitle("Entry Exit Barrier Gate");
         stage.show();
@@ -37,8 +38,7 @@ public class App extends Application {
     public static void main(String[] args) {
         launch();
     }
-    
-    
+
     public static void switchToSecondary(ArrayList<ArrayList<String>> data) throws IOException {
         FXMLLoader loader = new FXMLLoader(App.class.getResource("secondary.fxml"));
         Parent root = loader.load();
@@ -47,7 +47,7 @@ public class App extends Application {
         SecondaryController controller = loader.getController();
         controller.receiveData(data);
 
-    scene.setRoot(root);
+        scene.setRoot(root);
     }
 
 }
