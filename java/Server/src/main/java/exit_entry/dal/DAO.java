@@ -1,3 +1,7 @@
+/*
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Licenses/license-default.txt to change this license
+ * Click nbfs://nbhost/SystemFileSystem/Templates/Classes/Class.java to edit this template
+ */
 package exit_entry.dal;
 
 import java.sql.Connection;
@@ -30,7 +34,9 @@ public class DAO {
              ResultSet rs = statement.executeQuery(query)) {
             if (rs.next()) {
                 int maxId = rs.getInt("max_id");
+                
                 idCounter = maxId + 1;
+                System.out.println("maxid: "+Integer.toString(idCounter));
             } else {
                 idCounter = 1; 
             }
@@ -45,7 +51,7 @@ public class DAO {
         String user = "root";
         String password = "root";
         try (Connection connection = DriverManager.getConnection(url, user, password)) {
-            // Database created or exists
+        System.out.println("Database created or exists");
         } catch (SQLException e) {
             e.printStackTrace();
         }
