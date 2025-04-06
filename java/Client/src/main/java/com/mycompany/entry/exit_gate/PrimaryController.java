@@ -12,159 +12,164 @@ import javafx.scene.image.ImageView;
 
 public class PrimaryController implements Runnable {
 
-    @FXML
+    @FXML        
     RadioButton EntryON, EntryOFF, ExitON, ExitOFF;
-
-    Thread thread;
-    private Client client;
-    @FXML
+    @FXML 
     private Label SpotCount;
-    @FXML
+    @FXML 
     ImageView logoImage, entry_icon, exit_icon, spot1_image, spot2_image, spot3_image;
-    @FXML
-    private Label Spot1Status;
-    @FXML
-    private Label Spot2Status;
-    @FXML
-    private Label Spot3Status;
-    @FXML
-    private ToggleGroup ExitDoorControl;
-    @FXML
-    private ToggleGroup EntryDoorControl;
+    @FXML 
+    private Label Spot1Status, Spot2Status, Spot3Status;
+    @FXML 
+    private ToggleGroup ExitDoorControl, EntryDoorControl;
+
+    private Thread thread;
+    private Client client;
     private int cnt = 0;
+    private volatile boolean running = true;
 
     public void initialize() {
         client = new Client();
+        initializeImages();
+        startStatusThread();
+    }
+
+    private void initializeImages() {
+        try {
+            logoImage.setImage(loadImage("images/logo.png"));
+            spot1_image.setImage(loadImage("images/park.png"));
+            spot2_image.setImage(loadImage("images/park.png"));
+            spot3_image.setImage(loadImage("images/park.png"));
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private javafx.scene.image.Image loadImage(String path) {
+        return new javafx.scene.image.Image(getClass().getResourceAsStream(path));
+    }
+
+    private void startStatusThread() {
         thread = new Thread(this);
         thread.setDaemon(true);
         thread.start();
-        logoImage.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/logo.png")));
-        spot1_image.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/park.png")));
-        spot2_image.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/park.png")));
-        spot3_image.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/park.png")));
     }
 
     @Override
     public void run() {
-        while (true) {
-            // Request the current spot status from the server
-            client.printMessage("GetSpotStatus");
-            // Read the response from the server
-            final String statusString = client.readMessage();
-            cnt = 0;
-            // Create local copies of the UI controls for use in the lambda
-            final Label[] labels = {Spot1Status, Spot2Status, Spot3Status};
-            final ImageView[] imageViews = {spot1_image, spot2_image, spot3_image};
-
-            // Update the GUI on the JavaFX Application Thread
-            Platform.runLater(() -> {
-                if (statusString != null && statusString.length() >= 3) {
-                    for (int i = 0; i < 3; i++) {
-                        if (statusString.charAt(i) == '1') {
-                            labels[i].setText("Available");
-                            cnt++;
-                        } else {
-                            labels[i].setText("Not Available");
-                        }
-                        updateSpotImage(labels[i], imageViews[i]);
-                        SpotCount.setText(Integer.toString(cnt));
-                    }
-                }
-            });
-
-            try {
-                Thread.sleep(500);
-            } catch (InterruptedException ex) {
-                ex.printStackTrace();
-            }
+        while (running) {
+            updateParkingStatus();
+            safeSleep(500);
         }
+    }
+
+    private void updateParkingStatus() {
+        client.printMessage("GetSpotStatus");
+        final String statusString = client.readMessage();
+        
+        Platform.runLater(() -> {
+            if (statusString != null && statusString.length() >= 3) {
+                cnt = 0;
+                updateSpot(0, Spot1Status, spot1_image, statusString);
+                updateSpot(1, Spot2Status, spot2_image, statusString);
+                updateSpot(2, Spot3Status, spot3_image, statusString);
+                SpotCount.setText(Integer.toString(cnt));
+            }
+        });
+    }
+
+    private void updateSpot(int index, Label label, ImageView image, String status) {
+        if (status.charAt(index) == '1') {
+            label.setText("Available");
+            cnt++;
+        } else {
+            label.setText("Not Available");
+        }
+        updateSpotImage(label, image);
+    }
+
+    @FXML
+    private void handleDoorControl(ActionEvent event, boolean isEntry) {
+        RadioButton selected = (RadioButton) event.getSource();
+        String command = selected.getText().contains("ON") ? "Open" : "Close";
+        String type = isEntry ? "Entry" : "Exit";
+        ImageView icon = isEntry ? entry_icon : exit_icon;
+
+        changeIconImage(selected.getText().contains("ON") ? "ON" : "OFF", icon);
+        client.printMessage(command + type);
     }
 
     @FXML
     public void entryDoorControl(ActionEvent event) {
-        if (EntryON.isSelected()) {
-            changeIconImage("ON", entry_icon); // Change image to ON
-            client.printMessage("OpenEntry");
-
-        } else if (EntryOFF.isSelected()) {
-            changeIconImage("OFF", entry_icon); // Change image to OFF
-            client.printMessage("CloseEntry");
-
-        }
+        handleDoorControl(event, true);
     }
 
-    //exit_dexitDooeoor
     @FXML
     public void exitDoorControl(ActionEvent event) {
-        if (ExitON.isSelected()) {
-            changeIconImage("ON", exit_icon); // Change image to ON
-            client.printMessage("OpenExit");
-
-        } else if (ExitOFF.isSelected()) {
-            changeIconImage("OFF", exit_icon); // Change image to OFF
-            client.printMessage("CloseExit");
-        }
+        handleDoorControl(event, false);
     }
 
     @FXML
     private void ShowHistory(ActionEvent event) throws IOException {
+        client.clearBuffer();
         client.printMessage("History");
 
-        try {
-            Thread.sleep(500);
-        } catch (InterruptedException ex) {
-            ex.printStackTrace();
-        }
-
-        String itr = client.readMessage();
         ArrayList<ArrayList<String>> twoDList = new ArrayList<>();
-
-        System.out.println(itr);
-
-        if (itr != null) {
-            for (int i = 0; i < Integer.parseInt(itr); i++) {
-                ArrayList<String> arrString = new ArrayList<>();
-
+        String itr = readValidHistoryCount();
+        
+        if (itr != null && !itr.isEmpty()) {
+            int count = Integer.parseInt(itr);
+            for (int i = 0; i < count; i++) {
+                ArrayList<String> entry = new ArrayList<>();
                 for (int j = 0; j < 3; j++) {
                     String msg = client.readMessage();
-                    if (msg != null) {
-                        arrString.add(msg);
-                    } else {
-                        break;
-                    }
+                    entry.add(msg != null ? msg : "N/A");
                 }
-                twoDList.add(arrString);
+                twoDList.add(entry);
             }
         }
 
         App.switchToSecondary(twoDList);
     }
 
-    // This method will check the status of each spot and update the image accordingly
-    @FXML
-    public void updateSpotImages() {
-        updateSpotImage(Spot1Status, spot1_image);
-        updateSpotImage(Spot2Status, spot2_image);
-        updateSpotImage(Spot3Status, spot3_image);
+    private String readValidHistoryCount() {
+        long startTime = System.currentTimeMillis();
+        while (System.currentTimeMillis() - startTime < 2000) {
+            String response = client.readMessage();
+            if (response != null && response.matches("\\d+")) {
+                return response;
+            }
+        }
+        return "0";
     }
 
-    // Helper method to check the spot's status and update the image
     private void updateSpotImage(Label spotStatus, ImageView spotImage) {
-        String imageName = "nopark.png"; // Default image for "not available"
-        if (spotStatus.getText().equals("Available")) {
-            imageName = "park.png"; // Image for "available"
-        }
-        spotImage.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/" + imageName)));
+        String imageName = spotStatus.getText().equals("Available") ? "park.png" : "nopark.png";
+        spotImage.setImage(loadImage("images/" + imageName));
     }
 
     private void changeIconImage(String status, ImageView icon) {
-        String imagePath = status.equals("ON") ? "led_on.png" : "led_off.png";
-        icon.setImage(new javafx.scene.image.Image(getClass().getResourceAsStream("images/" + imagePath)));
+        String imagePath = "led_" + (status.equals("ON") ? "on" : "off") + ".png";
+        icon.setImage(loadImage("images/" + imagePath));
+    }
+
+    private void safeSleep(int millis) {
+        try {
+            Thread.sleep(millis);
+        } catch (InterruptedException ex) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    public void stop() {
+        running = false;
+        if (client != null) {
+            client.close();
+        }
     }
 }
 
 class Client {
-
     private java.net.Socket server;
     private java.io.BufferedReader reader;
     private java.io.PrintStream output;
@@ -173,24 +178,44 @@ class Client {
         try {
             server = new java.net.Socket("127.0.0.1", 5005);
             reader = new java.io.BufferedReader(
-                    new java.io.InputStreamReader(server.getInputStream()));
+                new java.io.InputStreamReader(server.getInputStream()));
             output = new java.io.PrintStream(server.getOutputStream());
         } catch (Exception e) {
-            e.printStackTrace();
+            System.err.println("Connection error: " + e.getMessage());
         }
     }
 
-    public void printMessage(String msg) {
-        output.println(msg);
+    public synchronized void printMessage(String msg) {
+        if (output != null) {
+            output.println(msg);
+        }
     }
 
-    public String readMessage() {
-        String msg = null;
+    public synchronized String readMessage() {
         try {
-            msg = reader.readLine();
+            return reader.readLine();
         } catch (java.io.IOException e) {
-            e.printStackTrace();
+            return null;
         }
-        return msg;
+    }
+
+    public synchronized void clearBuffer() {
+        try {
+            while (reader.ready()) {
+                reader.readLine();
+            }
+        } catch (IOException e) {
+            System.err.println("Error clearing buffer: " + e.getMessage());
+        }
+    }
+
+    public void close() {
+        try {
+            if (server != null) server.close();
+            if (reader != null) reader.close();
+            if (output != null) output.close();
+        } catch (IOException e) {
+            System.err.println("Error closing connection: " + e.getMessage());
+        }
     }
 }
