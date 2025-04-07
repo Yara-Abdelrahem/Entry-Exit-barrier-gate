@@ -36,6 +36,8 @@ public class Server {
     }
 
     public void startServer() {
+        
+        
         new Thread(new Runnable() {
             @Override
             public void run() {
@@ -159,16 +161,17 @@ public class Server {
                     c.sendCommand(c.CLOSE_EXIT_GATE_CMD);
                     System.out.println("CloseExit command executed.");
                 } else {
-                    String s = "";
+                    StringBuilder sb = new StringBuilder();
+
                     for (int i = 0; i < 3; i++) {
                         if (c.getSpotState(i)) {
-                            s += "1";
+                            sb.append("0");
                         } else {
-                            s += "0";
+                            sb.append("1");
                         }
 
                     }
-                    ps.println(s);
+                    ps.println(sb.toString());
                 }
             }
         } catch (IOException e) {

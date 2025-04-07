@@ -38,11 +38,14 @@ public class garComm implements Communication {
     }
 
     public boolean getSpotState(int index) {
+        if(index == 0){
+            return getSpot1State();
+        }
         return Info[index];
     }
 
     public boolean getSpot1State() {
-        return Info[0];
+        return !Info[0];
     }
 
     public boolean getSpot2State() {
@@ -100,6 +103,9 @@ public class garComm implements Communication {
             System.out.println("Error Connecting to STM32");
         }
         Info = new boolean[5];
+        for(int i=0;i<Info.length;i++){
+            Info[i] = false;
+        }
     }
 
     public synchronized boolean send(byte[] command) {

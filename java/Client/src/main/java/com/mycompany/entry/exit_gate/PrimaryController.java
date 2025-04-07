@@ -59,7 +59,7 @@ public class PrimaryController implements Runnable {
     public void run() {
         while (running) {
             updateParkingStatus();
-            safeSleep(500);
+            safeSleep(100);
         }
     }
 
